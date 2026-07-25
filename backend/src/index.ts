@@ -1,5 +1,8 @@
 import Fastify from "fastify";
 import * as dotenv from "dotenv";
+import { extractSubscriptionFromEmail } from "./services/ollama";
+
+import cors from "@fastify/cors";
 
 import { desc, asc, eq } from "drizzle-orm";
 
@@ -12,6 +15,15 @@ dotenv.config();
 // logger: true gives us readable request logs in the terminal — essential for debugging, even in dev
 const fastify = Fastify({
   logger: true,
+});
+
+// Enable CORS so our Next.js frontend (different port = different origin) can call this API.
+// In production, we'll restrict this to our actual deployed frontend URL instead of allowing all origins.
+await fastify.register(cors, {
+  origin:
+    process.env.NODE_ENV === "production"
+      ? "https://your-production-domain.com" // placeholder — we'll set this correctly in Phase 6
+      : "http://localhost:3000", // allow only our local Next.js dev server
 });
 
 // Health check route — confirms the server is alive and responding
@@ -103,6 +115,32 @@ fastify.get("/subscriptions", async (request, reply) => {
   const result = await query.orderBy(asc(sortColumn));
 
   return { count: result.length, subscriptions: result };
+});
+
+const extractSchema = {
+  body: {
+    type: "object",
+    required: ["emailText"],
+    properties: {
+      emailText: { type: "string", minLength: 1 },
+    },
+  },
+};
+
+fastify.post("/extract", { schema: extractSchema }, async (request, reply) => {
+  const { emailText } = request.body as { emailText: string };
+
+  try {
+    const extracted = await extractSubscriptionFromEmail(emailText);
+    return extracted;
+  } catch (err) {
+    fastify.log.error(err);
+    reply.code(422); // 422 = Unprocessable Entity — request was valid, but we couldn't extract usable data
+    return {
+      error: "Extraction failed",
+      message: err instanceof Error ? err.message : "Unknown error",
+    };
+  }
 });
 
 // Start the server
