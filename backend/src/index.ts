@@ -1,6 +1,9 @@
 import Fastify from "fastify";
 import * as dotenv from "dotenv";
 
+import { db } from "./db/client";
+import { subscriptions } from "./db/schema";
+
 dotenv.config();
 
 // Create the Fastify server instance
@@ -13,6 +16,13 @@ const fastify = Fastify({
 // Convention: GET /health, returns 200 with a simple status payload
 fastify.get("/health", async (request, reply) => {
   return { status: "ok", timestamp: new Date().toISOString() };
+});
+
+// Temporary test route — confirms Fastify can actually talk to Neon via Drizzle
+// We'll replace this with real CRUD routes in the next step
+fastify.get("/db-test", async (request, reply) => {
+  const result = await db.select().from(subscriptions);
+  return { count: result.length, rows: result };
 });
 
 // Start the server
