@@ -1,6 +1,8 @@
 import Fastify from "fastify";
 import * as dotenv from "dotenv";
 
+import { desc, asc, eq } from "drizzle-orm";
+
 import { db } from "./db/client";
 import { subscriptions } from "./db/schema";
 
@@ -76,6 +78,32 @@ fastify.post(
     return newSubscription;
   },
 );
+
+fastify.get("/subscriptions", async (request, reply) => {
+  const { category, sortBy } = request.query as {
+    category?: string;
+    sortBy?: "renewalDate" | "amount" | "createdAt";
+  };
+
+  // Build the query conditionally based on whether a category filter was passed
+  let query = db.select().from(subscriptions);
+
+  if (category) {
+    query = query.where(eq(subscriptions.category, category)) as typeof query;
+  }
+
+  // Default sort: soonest renewal first. Falls back to createdAt if no renewal date logic needed.
+  const sortColumn =
+    sortBy === "amount"
+      ? subscriptions.amount
+      : sortBy === "createdAt"
+        ? subscriptions.createdAt
+        : subscriptions.renewalDate;
+
+  const result = await query.orderBy(asc(sortColumn));
+
+  return { count: result.length, subscriptions: result };
+});
 
 // Start the server
 const start = async () => {
