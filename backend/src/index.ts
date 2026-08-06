@@ -1,13 +1,13 @@
 import Fastify from "fastify";
 import * as dotenv from "dotenv";
-import { extractSubscriptionFromEmail } from "./services/ollama";
+import { extractSubscriptionFromEmail } from "./services/ollama.js";
 
 import cors from "@fastify/cors";
 
 import { desc, asc, eq } from "drizzle-orm";
 
-import { db } from "./db/client";
-import { subscriptions } from "./db/schema";
+import { db } from "./db/client.js";
+import { subscriptions } from "./db/schema.js";
 
 dotenv.config();
 
